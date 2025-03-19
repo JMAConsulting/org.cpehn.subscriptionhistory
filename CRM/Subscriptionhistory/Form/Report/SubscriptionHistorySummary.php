@@ -1,6 +1,6 @@
 <?php
 
-class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report_Form {
+class CRM_Subscriptionhistory_Form_Report_SubscriptionHistorySummary extends CRM_Report_Form {
 
   protected $_emailField = FALSE;
 
@@ -47,7 +47,13 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
     $this->_columns = array(
       'civicrm_contact' => array(
         'dao' => 'CRM_Contact_DAO_Contact',
-        'fields' => $this->getBasicContactFields(),
+        'fields' => [
+            'id' => array(
+            'title' => ts('Contact ID'),
+            'required' => TRUE,
+            'default' => TRUE,
+          ),
+        ],
         'filters' => $this->getBasicContactFilters(),
         'order_bys' => array(
           'sort_name' => array(
@@ -59,6 +65,7 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
         ),
         'grouping' => 'contact-fields',
       ),
+
       'civicrm_group' => array(
         'dao' => 'CRM_Contact_DAO_GroupContact',
         'fields' => array(
@@ -76,9 +83,8 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
           'date' => array(
             'title' => ts('Subscription Date'),
             'type' => CRM_Utils_Type::T_DATE,
-            'required' => TRUE,
-            'default' => TRUE,
           ),
+          'contact_id' => ['title' => 'Total (Un)subscriber', 'dbAlias' => 'COUNT(subscription_history_civireport.contact_id)', 'required' => TRUE,],
           'status' => array(
             'title' => ts('Subscription Status'),
             'default' => TRUE,
@@ -92,6 +98,7 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
             'title' => ts('Group'),
             'operatorType' => CRM_Report_Form::OP_MULTISELECT,
             'group' => TRUE,
+            'dbAlias' => 'subscription_history_civireport.group_id',
             'options' => CRM_Core_PseudoConstant::group(),
           ),
           'date' => array(
@@ -113,6 +120,7 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
         ),
         'group_bys' => [
           'date' => [
+            'title' => ts('Subscription Date'),
             'frequency' => TRUE,
             'default' => TRUE,
           ],
@@ -266,6 +274,10 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
                 CRM_Utils_Array::value("{$fieldName}_min", $this->_params),
                 CRM_Utils_Array::value("{$fieldName}_max", $this->_params)
               );
+              if ($fieldName == 'group_id' && $clause == 1) {
+                $sqlOP = $this->getSQLOperator($op);
+                $clause = "{$field['dbAlias']} $sqlOP (" . implode(', ', CRM_Utils_Array::value("{$fieldName}_value", $this->_params)) . ")";
+              }
             }
           }
 
@@ -275,7 +287,6 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
         }
       }
     }
-
     if (empty($clauses)) {
       $this->_where = "WHERE ( 1 ) ";
     }
@@ -286,6 +297,7 @@ class CRM_Subscriptionhistory_Form_Report_SubscriptionHistory extends CRM_Report
     if ($this->_aclWhere) {
       $this->_where .= " AND {$this->_aclWhere} ";
     }
+
   }
 
   function groupBy() {
